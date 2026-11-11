@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binance Futures Testnet Bot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-6 font-sans">
+    <div class="max-w-4xl mx-auto space-y-6">
+        <!-- Header -->
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex justify-between items-center shadow-lg">
+            <div>
+                <h1 class="text-2xl font-bold text-yellow-400">Binance Futures Testnet Bot</h1>
+                <p class="text-sm text-slate-400">USDT-M Simplified Trading Interface (Market, Limit & Stop-Limit)</p>
+            </div>
+            <span class="px-3 py-1 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-full text-xs font-semibold">
+                TESTNET ACTIVE
+            </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Order Form -->
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+                <h2 class="text-lg font-semibold mb-4 border-b border-slate-700 pb-2">Place Order</h2>
+                <form id="orderForm" class="space-y-4">
+                    <div>
+                        <label class="block text-xs text-slate-400 uppercase mb-1">Trading Pair Symbol</label>
+                        <input type="text" id="symbol" value="BTCUSDT" required
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-yellow-400 uppercase">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-slate-400 uppercase mb-1">Side</label>
+                            <select id="side" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-yellow-400">
+                                <option value="BUY">BUY (Long)</option>
+                                <option value="SELL">SELL (Short)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-400 uppercase mb-1">Order Type</label>
+                            <select id="order_type" onchange="togglePriceFields()" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-yellow-400">
+                                <option value="MARKET">MARKET</option>
+                                <option value="LIMIT">LIMIT</option>
+                                <option value="STOP">STOP-LIMIT (Bonus)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-slate-400 uppercase mb-1">Quantity</label>
+                        <input type="number" id="quantity" step="any" value="0.01" required
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-yellow-400">
+                    </div>
+
+                    <div id="stopPriceBox" class="hidden">
+                        <label class="block text-xs text-slate-400 uppercase mb-1">Stop Trigger Price (USDT)</label>
+                        <input type="number" id="stop_price" step="any" placeholder="e.g. 89500"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-yellow-400">
+                    </div>
+
+                    <div id="limitPriceBox" class="hidden">
+                        <label class="block text-xs text-slate-400 uppercase mb-1">Limit Execution Price (USDT)</label>
+                        <input type="number" id="price" step="any" placeholder="e.g. 90000"
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-yellow-400">
+                    </div>
+
+                    <button type="submit" id="submitBtn"
+                        class="w-full bg-yellow-500 hover:bg-yellow-400 text-slate-900 font-bold py-2.5 rounded-lg transition">
+                        Submit Order
+                    </button>
+                </form>
+            </div>
+
+            <!-- Execution Output -->
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg flex flex-col justify-between">
+                <div>
+                    <h2 class="text-lg font-semibold mb-4 border-b border-slate-700 pb-2">Execution Status & Response</h2>
+                    <div id="resultBox" class="bg-slate-900 border border-slate-700 rounded-lg p-4 text-sm text-slate-400 min-h-[220px] whitespace-pre-wrap font-mono">
+                        No order submitted yet. Use the form on the left to place a trade.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Bot Logs -->
+        <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-lg font-semibold">Live Activity Log (bot.log)</h2>
+                <button onclick="fetchLogs()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded text-slate-200">
+                    Refresh Logs
+                </button>
+            </div>
+            <pre id="logBox" class="bg-slate-950 border border-slate-800 rounded-lg p-4 text-xs text-emerald-400 font-mono overflow-x-auto max-h-60">Loading logs...</pre>
+        </div>
+    </div>
+
+    <script>
+        function togglePriceFields() {
+            const type = document.getElementById("order_type").value;
+            document.getElementById("limitPriceBox").classList.toggle("hidden", type === "MARKET");
+            document.getElementById("stopPriceBox").classList.toggle("hidden", type !== "STOP");
+        }
+
+        async function fetchLogs() {
+            const res = await fetch("/api/logs");
+            const data = await res.json();
+            const logBox = document.getElementById("logBox");
+            logBox.textContent = data.logs;
+            logBox.scrollTop = logBox.scrollHeight;
+        }
+
+        document.getElementById("orderForm").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById("submitBtn");
+            const resultBox = document.getElementById("resultBox");
+            btn.disabled = true;
+            btn.textContent = "Processing...";
+            resultBox.textContent = "Sending order to Binance Futures Testnet...";
+
+            const payload = {
+                symbol: document.getElementById("symbol").value,
+                side: document.getElementById("side").value,
+                order_type: document.getElementById("order_type").value,
+                quantity: document.getElementById("quantity").value,
+                price: document.getElementById("price").value,
+                stop_price: document.getElementById("stop_price").value
+            };
+
+            try {
+                const res = await fetch("/api/order", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    const o = data.order;
+                    resultBox.className = "bg-slate-900 border border-emerald-500/50 rounded-lg p-4 text-sm text-emerald-400 min-h-[220px] whitespace-pre-wrap font-mono";
+                    resultBox.textContent =
+                        `✅ ORDER EXECUTED SUCCESSFULLY!\n\n` +
+                        `Order ID:    ${o.orderId}\n` +
+                        `Symbol:      ${o.symbol}\n` +
+                        `Side:        ${o.side}\n` +
+                        `Type:        ${o.type}\n` +
+                        `Status:      ${o.status}\n` +
+                        `Quantity:    ${o.origQty}\n` +
+                        `Limit Price: ${o.price || "Market"}\n` +
+                        `Stop Price:  ${o.stopPrice || "N/A"}`;
+                } else {
+                    resultBox.className = "bg-slate-900 border border-red-500/50 rounded-lg p-4 text-sm text-red-400 min-h-[220px] whitespace-pre-wrap font-mono";
+                    resultBox.textContent = `❌ ORDER FAILED\n\n${data.error}`;
+                }
+            } catch (err) {
+                resultBox.textContent = "Error connecting to local server.";
+            }
+
+            btn.disabled = false;
+            btn.textContent = "Submit Order";
+            fetchLogs();
+        });
+
+        fetchLogs();
+    </script>
+</body>
+</html>
